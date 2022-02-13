@@ -44,29 +44,25 @@ def get_cycles(prod_df, start_cur, cycle_length):
 
 def get_gain(cycle, cycle_products, prod_orderbooks):
     score = 1.0
-    # size_info = [cycle_products[str(cycle)]]
+    size = c.START_HOLDINGS
     for i, trade in enumerate(cycle_products[str(cycle)]):
         if trade[1]:
             score *= (float(prod_orderbooks[trade[0]]['bids'][0][0]) * (1 - c.TRANSACTION_COST))
-            # amount = float(prod_orderbooks[trade[0]]['bids'][0][1])
+            prev_size = float(prod_orderbooks[trade[0]]['bids'][0][1])
+            next_size = prev_size * float(prod_orderbooks[trade[0]]['bids'][0][0])
+            if size > prev_size:
+                size = next_size
+            else:
+                size *= float(prod_orderbooks[trade[0]]['bids'][0][0])
         else:
             score *= ((1 / float(prod_orderbooks[trade[0]]['asks'][0][0])) * (1 - c.TRANSACTION_COST))
-    """for i, trade in enumerate(cycle_products[str(cycle)]):
-        if i == 1:
-            if trade[1]:
-                score *= float(prod_orderbooks[trade[0]]['asks'][0][0])
-                size_info.append(prod_orderbooks[trade[0]]['asks'][0])
+            next_size = float(prod_orderbooks[trade[0]]['asks'][0][1])
+            prev_size = next_size * float(prod_orderbooks[trade[0]]['asks'][0][0])
+            if size > prev_size:
+                size = next_size
             else:
-                score *= 1 / float(prod_orderbooks[trade[0]]['bids'][0][0])
-                size_info.append(prod_orderbooks[trade[0]]['bids'][0])
-        else:
-            if trade[1]:
-                score *= float(prod_orderbooks[trade[0]]['bids'][0][0])
-                size_info.append(prod_orderbooks[trade[0]]['bids'][0])
-            else:
-                score *= 1 / float(prod_orderbooks[trade[0]]['asks'][0][0])
-                size_info.append(prod_orderbooks[trade[0]]['asks'][0])"""
-    return score
+                size *= 1 / float(prod_orderbooks[trade[0]]['asks'][0][0])
+    return score, size
 
 
 def stats(gains_list):

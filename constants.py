@@ -18,3 +18,4 @@ BTC_USDT_TOP_5 = '/spotMarket/level2Depth5:BTC-USDT'
 client = Client(key, secret, passphrase)
 CYCLE_START = 'BTC'
 CYCLE_LEN = 4
+START_HOLDINGS = 100000.0

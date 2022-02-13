@@ -32,12 +32,15 @@ class Agent:
 
     def update_cycle_gains(self, cycles):
         for cycle in cycles:
-            gain_ratio = helpers.get_gain(cycle, self.cycle_products, self.prod_order_books)
+            gain_ratio, size = helpers.get_gain(cycle, self.cycle_products, self.prod_order_books)
             self.cycle_gains[str(cycle)] = gain_ratio
             self.list_of_gains.append(gain_ratio)
+            if gain_ratio > .9983:
+                print(gain_ratio, size * 42000.0)
+                print('Earnings:   ', (gain_ratio-1) * size * 42000.0)
             if self.count % 10000 == 0:
                 print(helpers.stats(self.list_of_gains))
-                helpers.plot_gains_hist(self.list_of_gains)
+                # helpers.plot_gains_hist(self.list_of_gains)
                 self.list_of_gains = []
             self.count += 1
 
