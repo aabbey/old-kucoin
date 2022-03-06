@@ -20,6 +20,7 @@ class Agent:
                 self.update_cycle_gains(self.cycles_with_product[msg['subject']])
 
         ksm = await KucoinSocketManager.create(loop, c.client, handle_evt)
+
         await ksm.subscribe(c.TICKER_ALL)
         while True:
             await asyncio.sleep(60, loop=loop)
@@ -35,9 +36,12 @@ class Agent:
             gain_ratio, size = helpers.get_gain(cycle, self.cycle_products, self.prod_order_books)
             self.cycle_gains[str(cycle)] = gain_ratio
             self.list_of_gains.append(gain_ratio)
-            if gain_ratio > .9983:
-                print(gain_ratio, size * 42000.0)
-                print('Earnings:   ', (gain_ratio-1) * size * 42000.0)
+            if gain_ratio > 1:
+                earn = (gain_ratio-1) * size * c.TO_USD
+                if earn > .01:
+                    print(gain_ratio, size)
+                    print('Cycle:   ', cycle)
+                    print('Earnings:   ', earn)
             if self.count % 10000 == 0:
                 print(helpers.stats(self.list_of_gains))
                 # helpers.plot_gains_hist(self.list_of_gains)
