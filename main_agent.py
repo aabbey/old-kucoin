@@ -44,7 +44,6 @@ class Agent:
                     print('Earnings:   ', earn)
             if self.count % 10000 == 0:
                 print(helpers.stats(self.list_of_gains))
-                # helpers.plot_gains_hist(self.list_of_gains)
                 self.list_of_gains = []
             self.count += 1
 

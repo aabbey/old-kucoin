@@ -2,6 +2,10 @@ from tqdm import tqdm
 import constants as c
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+import hmac
+import hashlib
+import base64
 
 
 def goes_to(prod_df, cycle, last=False):
@@ -38,7 +42,6 @@ def get_cycles(prod_df, start_cur, cycle_length):
             else:
                 new_cycles = new_cycles + goes_to(prod_df, cycle)
         cycles = new_cycles
-
     return new_cycles
 
 
@@ -87,3 +90,20 @@ def convert_to_cycle_products(cycle, prod_df):
         else:
             print('something wrong with:   ', cycle)
     return cycle_products
+
+
+def header_setup(endpoint):
+    now = int(time.time() * 1000)
+    str_to_sign = str(now) + 'GET' + endpoint
+    signature = base64.b64encode(
+        hmac.new(c.SECRET.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
+    passphrase = base64.b64encode(
+        hmac.new(c.SECRET.encode('utf-8'), c.PASSPHRASE.encode('utf-8'), hashlib.sha256).digest())
+    headers = {
+        "KC-API-SIGN": signature,
+        "KC-API-TIMESTAMP": str(now),
+        "KC-API-KEY": c.KEY,
+        "KC-API-PASSPHRASE": passphrase,
+        "KC-API-KEY-VERSION": "2"
+    }
+    return headers
