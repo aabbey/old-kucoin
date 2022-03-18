@@ -29,7 +29,7 @@ CYCLE_START = 'ETH'
 # TO_USD = 2600
 TO_USD = float(requests.get(URL + PRICE_ENDPOINT).json()['data'][CYCLE_START])
 CYCLE_LEN = 4
-START_HOLDINGS = 100000.0
+START_HOLDINGS = 150 / TO_USD
 
 LIST_OF_CLASS_B = ['1EARTH', '2CRZ', 'ABBC', 'ACA', 'ACE', 'ADS', 'AI', 'AIOZ', 'ALBT', 'ALPACA', 'APL', 'ARKER',
                    'ARRR', 'AURY', 'AXC', 'BASIC', 'BLOK', 'BMON', 'BOA', 'BONDLY', 'BOSON', 'BULL', 'CARD', 'CARR',

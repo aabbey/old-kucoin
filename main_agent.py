@@ -1,6 +1,7 @@
 import asyncio
 import constants as c
 import helpers
+import timeit
 from kucoin.asyncio import KucoinSocketManager
 
 
@@ -11,6 +12,7 @@ class Agent:
         self.cycle_gains = cycle_gains
         self.cycle_products = cycle_products
         self.list_of_gains = []
+        self.s = 0
         self.count = 0
 
     async def listening_for_tickers(self, loop):

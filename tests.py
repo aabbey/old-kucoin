@@ -47,7 +47,12 @@ def unique_order(id):
 
 
 if __name__ == '__main__':
-    s = timeit.default_timer()
     print(accounts())
+    s = timeit.default_timer()
+    # c.client.create_market_order(symbol='BTC-USDT', side='sell', size='.000125')
+    # c.client.create_market_order(symbol='BTC-USDT', side='buy', size='.000125')
     t = timeit.default_timer() - s
-    print(f'accounts() call took {t} seconds')
+    print(f'order took {t} seconds')
+    print(accounts())
+
+
