@@ -28,24 +28,6 @@ def tradable_pairs():
     return symbols
 
 
-def trade_fee():
-    now = int(time.time() * 1000)
-    str_to_sign = str(now) + 'GET' + c.FEE_ENDPOINT
-    signature = base64.b64encode(
-        hmac.new(api_secret.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
-    passphrase = base64.b64encode(
-        hmac.new(api_secret.encode('utf-8'), api_passphrase.encode('utf-8'), hashlib.sha256).digest())
-    headers = {
-        "KC-API-SIGN": signature,
-        "KC-API-TIMESTAMP": str(now),
-        "KC-API-KEY": api_key,
-        "KC-API-PASSPHRASE": passphrase,
-        "KC-API-KEY-VERSION": "2"
-    }
-    fee = requests.get(c.URL + c.FEE_ENDPOINT, headers=headers).json()
-    print(fee)
-
-
 def ledgers():
     headers = helpers.header_setup(c.ACCOUNT_LEDGERS_ENDPOINT)
     ledger = requests.get(c.URL + c.ACCOUNT_LEDGERS_ENDPOINT, headers=headers).json()
@@ -65,8 +47,7 @@ def unique_order(id):
 
 
 if __name__ == '__main__':
+    s = timeit.default_timer()
     print(accounts())
-    order_id = c.client.create_market_order('BTC-USDT', 'buy', size='0.0000125')
-    print(order_id)
-    print(unique_order(order_id['orderId']))
-    print(accounts())
+    t = timeit.default_timer() - s
+    print(f'accounts() call took {t} seconds')

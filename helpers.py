@@ -6,6 +6,7 @@ import time
 import hmac
 import hashlib
 import base64
+import requests
 
 
 def goes_to(prod_df, cycle, last=False):
@@ -49,8 +50,9 @@ def get_gain(cycle, cycle_products, prod_orderbooks):
     score = 1.0
     size = c.START_HOLDINGS
     for i, trade in enumerate(cycle_products[str(cycle)]):
+        transaction_cost = trade[2]
         if trade[1]:
-            score *= (float(prod_orderbooks[trade[0]]['bids'][0][0]) * (1 - c.TRANSACTION_COST))
+            score *= (float(prod_orderbooks[trade[0]]['bids'][0][0]) * (1 - transaction_cost))
             prev_size = float(prod_orderbooks[trade[0]]['bids'][0][1])
             next_size = prev_size * float(prod_orderbooks[trade[0]]['bids'][0][0])
             if size > prev_size:
@@ -58,7 +60,7 @@ def get_gain(cycle, cycle_products, prod_orderbooks):
             else:
                 size *= float(prod_orderbooks[trade[0]]['bids'][0][0])
         else:
-            score *= ((1 / float(prod_orderbooks[trade[0]]['asks'][0][0])) * (1 - c.TRANSACTION_COST))
+            score *= ((1 / float(prod_orderbooks[trade[0]]['asks'][0][0])) * (1 - transaction_cost))
             next_size = float(prod_orderbooks[trade[0]]['asks'][0][1])
             prev_size = next_size * float(prod_orderbooks[trade[0]]['asks'][0][0])
             if size > prev_size:
@@ -84,9 +86,19 @@ def convert_to_cycle_products(cycle, prod_df):
     for n in range(len(cycle) - 1):
         p = '-'.join(cycle[n:n + 2])
         if p in prod_df.index:
-            cycle_products.append([prod_df.loc[p]['symbol'], True])
+            if cycle[n] in c.LIST_OF_CLASS_B:
+                cycle_products.append([prod_df.loc[p]['symbol'], True, 2 * c.TRANSACTION_COST])
+            elif cycle[n] in c.LIST_OF_CLASS_C:
+                cycle_products.append([prod_df.loc[p]['symbol'], True, 3 * c.TRANSACTION_COST])
+            else:
+                cycle_products.append([prod_df.loc[p]['symbol'], True, c.TRANSACTION_COST])
         elif '-'.join(reversed(cycle[n:n + 2])) in prod_df.index:
-            cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False])
+            if cycle[n+1] in c.LIST_OF_CLASS_B:
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 2 * c.TRANSACTION_COST])
+            elif cycle[n+1] in c.LIST_OF_CLASS_C:
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 3 * c.TRANSACTION_COST])
+            else:
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, c.TRANSACTION_COST])
         else:
             print('something wrong with:   ', cycle)
     return cycle_products
@@ -107,3 +119,9 @@ def header_setup(endpoint):
         "KC-API-KEY-VERSION": "2"
     }
     return headers
+
+
+def trade_fee(symbol):
+    headers = header_setup(c.FEE_ENDPOINT_BASE + symbol)
+    fees = requests.get(c.URL + c.FEE_ENDPOINT_BASE + symbol, headers=headers).json()
+    return fees
