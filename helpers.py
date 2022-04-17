@@ -7,6 +7,7 @@ import hmac
 import hashlib
 import base64
 import requests
+import api_endpoints
 
 
 def goes_to(prod_df, cycle, last=False):
@@ -44,6 +45,20 @@ def get_cycles(prod_df, start_cur, cycle_length):
                 new_cycles = new_cycles + goes_to(prod_df, cycle)
         cycles = new_cycles
     return new_cycles
+
+
+def trade_all(curr, pair):
+    # error because don't want to trade all all of the time
+    if pair[1]:
+        for d in api_endpoints.accounts()['data']:
+            if d['currency'] == curr and d['type'] == 'trade':
+                size = d['balance']
+        c.client.create_market_order(symbol=pair[0], side='sell', size=size)
+    else:
+        for d in api_endpoints.accounts()['data']:
+            if d['currency'] == curr and d['type'] == 'trade':
+                size = d['balance']
+        c.client.create_market_order(symbol=pair[0], side='buy', funds=size)
 
 
 def get_gain(cycle, cycle_products, prod_orderbooks):

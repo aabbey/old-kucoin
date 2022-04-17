@@ -3,7 +3,7 @@ import os
 import requests
 
 
-TRANSACTION_COST = .001
+TRANSACTION_COST = .0008
 GOOD_GAIN = -.25
 
 KEY = os.getenv('API_KEY')
@@ -25,8 +25,7 @@ HIST_ORDERS_ENDPOINT = '/api/v1/fills'
 UNIQUE_ORDER_BASE_ENDPOINT = '/api/v1/orders/'
 PRICE_ENDPOINT = '/api/v1/prices'
 client = Client(KEY, SECRET, PASSPHRASE)
-CYCLE_START = 'ETH'
-# TO_USD = 2600
+CYCLE_START = 'USDT'
 TO_USD = float(requests.get(URL + PRICE_ENDPOINT).json()['data'][CYCLE_START])
 CYCLE_LEN = 4
 START_HOLDINGS = 150 / TO_USD
