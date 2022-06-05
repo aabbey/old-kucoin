@@ -1,3 +1,5 @@
+import json
+
 from tqdm import tqdm
 import constants as c
 import numpy as np
@@ -8,6 +10,8 @@ import hashlib
 import base64
 import requests
 import api_endpoints
+import csv
+import pandas as pd
 
 
 def goes_to(prod_df, cycle, last=False):
@@ -47,18 +51,24 @@ def get_cycles(prod_df, start_cur, cycle_length):
     return new_cycles
 
 
-def trade_all(curr, pair):
-    # error because don't want to trade all all of the time
-    if pair[1]:
-        for d in api_endpoints.accounts()['data']:
-            if d['currency'] == curr and d['type'] == 'trade':
-                size = d['balance']
-        c.client.create_market_order(symbol=pair[0], side='sell', size=size)
-    else:
-        for d in api_endpoints.accounts()['data']:
-            if d['currency'] == curr and d['type'] == 'trade':
-                size = d['balance']
-        c.client.create_market_order(symbol=pair[0], side='buy', funds=size)
+def load_df_from_top_curr():
+    prod_df = pd.DataFrame.from_dict(c.client.get_symbols())
+    use_curr_list = get_common_currencies(c.NUM_CUR)
+    prod_dfc = prod_df[prod_df['baseCurrency'].isin(use_curr_list)
+                       & prod_df['quoteCurrency'].isin(use_curr_list)]
+    return prod_dfc
+
+
+def get_common_currencies(top=40):
+    with open('good_cycles.csv', 'r') as cycles_file:
+        list_of_good_cycles = next(csv.reader(cycles_file))
+    d = dict.fromkeys(set(list_of_good_cycles))
+    for e in list(set(list_of_good_cycles)):
+        d[e] = list_of_good_cycles.count(e)
+    df = pd.DataFrame(d.items(), columns=['Currency', 'Occurrences'])
+    df = df.sort_values(by='Occurrences', ascending=False, ignore_index=True)
+    df_top = df.head(top)
+    return df_top['Currency'].to_list()
 
 
 def get_gain(cycle, cycle_products, prod_orderbooks):
@@ -119,9 +129,14 @@ def convert_to_cycle_products(cycle, prod_df):
     return cycle_products
 
 
-def header_setup(endpoint):
+def header_setup(endpoint, req_type, data=''):
     now = int(time.time() * 1000)
-    str_to_sign = str(now) + 'GET' + endpoint
+    if req_type == 'GET':
+        str_to_sign = str(now) + req_type + endpoint
+    else:
+        #data = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
+        str_to_sign = str(now) + req_type + endpoint + data
+
     signature = base64.b64encode(
         hmac.new(c.SECRET.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
     passphrase = base64.b64encode(
@@ -130,6 +145,7 @@ def header_setup(endpoint):
         "KC-API-SIGN": signature,
         "KC-API-TIMESTAMP": str(now),
         "KC-API-KEY": c.KEY,
+        "Content-Type": 'application/json',
         "KC-API-PASSPHRASE": passphrase,
         "KC-API-KEY-VERSION": "2"
     }

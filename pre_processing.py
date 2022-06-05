@@ -4,7 +4,8 @@ import pandas as pd
 from tqdm import tqdm
 import requests
 
-prod_df = pd.DataFrame.from_dict(c.client.get_symbols())
+# prod_df = pd.DataFrame.from_dict(c.client.get_symbols())
+prod_df = helpers.load_df_from_top_curr()
 cycles = helpers.get_cycles(prod_df[['baseCurrency', 'quoteCurrency']],
                             start_cur=c.CYCLE_START,
                             cycle_length=c.CYCLE_LEN)

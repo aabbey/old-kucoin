@@ -1,4 +1,6 @@
 import json
+import uuid
+
 import websockets
 import asyncio
 import hmac
@@ -50,47 +52,74 @@ def unique_order(id):
     return accounts
 
 
-count = {'count': 3}
+class TestAgent:
+    def __init__(self):
+        self.between_ticks = []
+        self.last = timeit.default_timer()
+
+    async def time_taker(self):
+        for i in range(200000000):
+            i = 3
+
+    async def listening(self, loop):
+        async def handle_evt(msg):
+            t = timeit.default_timer()
+            t_since_last = t - self.last
+            self.between_ticks.append(t_since_last)
+            self.last = t
+
+        ksm = await KucoinSocketManager.create(loop, c.client, handle_evt)
+
+        await ksm.subscribe(c.TICKER_ALL)
+        while True:
+            await asyncio.sleep(5, loop=loop)
+            await self.time_taker()
+            print(helpers.stats(self.between_ticks[1000:1100]))
+            print(len(self.between_ticks))
+
+    def start_listening(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.listening(loop))
 
 
-async def listening(loop):
-    async def handle_evt(msg):
-        if msg['topic'] == '/account/balance':
-            print(msg)
-            print(timeit.default_timer())
-        # elif msg['topic'] == c.TICKER_ALL:
-
-    ksm = await KucoinSocketManager.create(loop, c.client, handle_evt, private=True)
-
-    await ksm.subscribe('/account/balance')
-    while True:
-        print('sleeping to keep loop open')
-        await asyncio.sleep(10, loop=loop)
-        print(timeit.default_timer())
-        c.client.create_market_order(symbol='BTC-USDT', side='buy', funds='2.5')
+async def trade_f(sym, side, f):
+    c.client.create_market_order(symbol=sym, side=side, funds=f)
 
 
-def print_common_currencies(top=40):
-    with open('good_cycles.csv', 'r') as cycles_file:
-        list_of_good_cycles = next(csv.reader(cycles_file))
-    d = dict.fromkeys(set(list_of_good_cycles))
-    for e in list(set(list_of_good_cycles)):
-        d[e] = list_of_good_cycles.count(e)
-    df = pd.DataFrame(d.items(), columns=['Currency', 'Occurrences'])
-    df = df.sort_values(by='Occurrences', ascending=False, ignore_index=True)
-    print(df.head(top))
-    dfh = df.head(top)
-    print(dfh['Occurrences'].sum())
-    print(df['Occurrences'].sum())
+async def trade_s(sym, side, s):
+    c.client.create_market_order(symbol=sym, side=side, size=s)
+
+
+async def trade_all():
+    task1 = asyncio.create_task(trade_f('BTC-USDT', 'sell', '5'))
+    print(timeit.default_timer() - s)
+    task2 = asyncio.create_task(trade_f('ETH-USDT', 'buy', '5'))
+    print(timeit.default_timer() - s)
+    task3 = asyncio.create_task(trade_s('ETH-BTC', 'sell', '.00163'))
+    print(timeit.default_timer() - s)
+
+    await task1
+    print(timeit.default_timer() - s)
+
+    await task3
+    print(timeit.default_timer() - s)
+
+    await task2
+    print(timeit.default_timer() - s)
 
 
 if __name__ == '__main__':
-    print_common_currencies()
-    """print(api_endpoints.accounts())
-    s = timeit.default_timer()
-    c.client.create_market_order(symbol='BTC-USDT', side='sell', funds='5')
-    c.client.create_market_order(symbol='ETH-USDT', side='buy', funds='5')
-    c.client.create_market_order(symbol='ETH-BTC', side='sell', size='.00163')
-    total_time = timeit.default_timer() - s
-    print(api_endpoints.accounts())
-    print(total_time)"""
+    """print(asyncio.run(api_endpoints.accounts(), debug=True))
+    r = c.client.create_market_order(symbol='BTC-USDT', side='buy', size='.000125')
+    print(r)
+    print(asyncio.run(api_endpoints.accounts(), debug=True))"""
+    data = {
+        'symbol': 'BTC-USDT',
+        'side': 'buy',
+        'type': 'market',
+        'size': '.000125',
+        'clientOid': str(uuid.uuid4()).replace('-', '')
+    }
+    print(asyncio.run(api_endpoints.accounts(), debug=True))
+    asyncio.run(api_endpoints.post_order(data), debug=True)
+    print(asyncio.run(api_endpoints.accounts(), debug=True))

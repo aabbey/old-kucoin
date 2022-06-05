@@ -56,6 +56,7 @@ class Agent:
             if gain_ratio > 1:
                 earn = (gain_ratio-1) * size * c.TO_USD
                 if earn > 0.005:
+
                     if cycle not in self.pos_cycles:
                         print('positive cycle: ', str(cycle))
                         with open('good_cycles.csv', 'a') as fd:
@@ -76,7 +77,7 @@ class Agent:
             else:
                 if cycle in self.pos_cycles:
                     self.pos_cycles.remove(cycle)
-            if self.count % 100000 == 0:
+            if self.count % 10000 == 0:
                 print(helpers.stats(self.list_of_gains))
                 print(self.profit)
                 self.list_of_gains = []

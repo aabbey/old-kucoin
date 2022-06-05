@@ -1,4 +1,5 @@
 from kucoin.client import Client
+# from kucoin.async_client import KucoinAsyncClient
 import os
 import requests
 
@@ -23,12 +24,14 @@ LIST_ACCOUNTS_ENDPOINT = '/api/v1/accounts'
 ACCOUNT_LEDGERS_ENDPOINT = '/api/v1/accounts/ledgers?bizType=KCS_Pay_Fees'
 HIST_ORDERS_ENDPOINT = '/api/v1/fills'
 UNIQUE_ORDER_BASE_ENDPOINT = '/api/v1/orders/'
+ORDERS_ENDPOINT = '/api/v1/orders'
 PRICE_ENDPOINT = '/api/v1/prices'
 client = Client(KEY, SECRET, PASSPHRASE)
 CYCLE_START = 'USDT'
+NUM_CUR = 350
 TO_USD = float(requests.get(URL + PRICE_ENDPOINT).json()['data'][CYCLE_START])
 CYCLE_LEN = 4
-START_HOLDINGS = 150 / TO_USD
+START_HOLDINGS = 50 / TO_USD
 
 LIST_OF_CLASS_B = ['1EARTH', '2CRZ', 'ABBC', 'ACA', 'ACE', 'ADS', 'AI', 'AIOZ', 'ALBT', 'ALPACA', 'APL', 'ARKER',
                    'ARRR', 'AURY', 'AXC', 'BASIC', 'BLOK', 'BMON', 'BOA', 'BONDLY', 'BOSON', 'BULL', 'CARD', 'CARR',
