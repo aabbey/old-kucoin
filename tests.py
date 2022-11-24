@@ -90,36 +90,7 @@ async def trade_s(sym, side, s):
     c.client.create_market_order(symbol=sym, side=side, size=s)
 
 
-async def trade_all():
-    task1 = asyncio.create_task(trade_f('BTC-USDT', 'sell', '5'))
-    print(timeit.default_timer() - s)
-    task2 = asyncio.create_task(trade_f('ETH-USDT', 'buy', '5'))
-    print(timeit.default_timer() - s)
-    task3 = asyncio.create_task(trade_s('ETH-BTC', 'sell', '.00163'))
-    print(timeit.default_timer() - s)
-
-    await task1
-    print(timeit.default_timer() - s)
-
-    await task3
-    print(timeit.default_timer() - s)
-
-    await task2
-    print(timeit.default_timer() - s)
-
-
 if __name__ == '__main__':
-    """print(asyncio.run(api_endpoints.accounts(), debug=True))
-    r = c.client.create_market_order(symbol='BTC-USDT', side='buy', size='.000125')
-    print(r)
-    print(asyncio.run(api_endpoints.accounts(), debug=True))"""
-    data = {
-        'symbol': 'BTC-USDT',
-        'side': 'buy',
-        'type': 'market',
-        'size': '.000125',
-        'clientOid': str(uuid.uuid4()).replace('-', '')
-    }
-    print(asyncio.run(api_endpoints.accounts(), debug=True))
-    asyncio.run(api_endpoints.post_order(data), debug=True)
-    print(asyncio.run(api_endpoints.accounts(), debug=True))
+    helpers.display_expected(cycle=['first', 'second', 'third'],
+                             ins={'first': 8.4, 'second': .022, 'third': 13.54},
+                             outs={'first': 8.3, 'second': .021, 'third': 13.55})

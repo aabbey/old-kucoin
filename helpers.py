@@ -1,4 +1,6 @@
 import json
+import math
+import timeit
 
 from tqdm import tqdm
 import constants as c
@@ -12,6 +14,7 @@ import requests
 import api_endpoints
 import csv
 import pandas as pd
+import uuid
 
 
 def goes_to(prod_df, cycle, last=False):
@@ -59,7 +62,7 @@ def load_df_from_top_curr():
     return prod_dfc
 
 
-def get_common_currencies(top=40):
+def get_common_currencies(top):
     with open('good_cycles.csv', 'r') as cycles_file:
         list_of_good_cycles = next(csv.reader(cycles_file))
     d = dict.fromkeys(set(list_of_good_cycles))
@@ -74,9 +77,11 @@ def get_common_currencies(top=40):
 def get_gain(cycle, cycle_products, prod_orderbooks):
     score = 1.0
     size = c.START_HOLDINGS
+    size_multipliers = []
     for i, trade in enumerate(cycle_products[str(cycle)]):
         transaction_cost = trade[2]
         if trade[1]:
+            size_multipliers.append(float(prod_orderbooks[trade[0]]['bids'][0][0]))
             score *= (float(prod_orderbooks[trade[0]]['bids'][0][0]) * (1 - transaction_cost))
             prev_size = float(prod_orderbooks[trade[0]]['bids'][0][1])
             next_size = prev_size * float(prod_orderbooks[trade[0]]['bids'][0][0])
@@ -85,6 +90,7 @@ def get_gain(cycle, cycle_products, prod_orderbooks):
             else:
                 size *= float(prod_orderbooks[trade[0]]['bids'][0][0])
         else:
+            size_multipliers.append((1 / float(prod_orderbooks[trade[0]]['asks'][0][0])))
             score *= ((1 / float(prod_orderbooks[trade[0]]['asks'][0][0])) * (1 - transaction_cost))
             next_size = float(prod_orderbooks[trade[0]]['asks'][0][1])
             prev_size = next_size * float(prod_orderbooks[trade[0]]['asks'][0][0])
@@ -92,7 +98,69 @@ def get_gain(cycle, cycle_products, prod_orderbooks):
                 size = next_size
             else:
                 size *= 1 / float(prod_orderbooks[trade[0]]['asks'][0][0])
-    return score, size
+
+    size_list = [size_multipliers[0] * size] * 3
+    for n in range(1, len(size_multipliers)):
+        size_list[n] = size_list[n - 1] * size_multipliers[n]
+    return score, size, size_list
+
+
+async def make_trade_from_queue(queue):
+    msg = await queue.get()
+    print(f"Got {msg}. Posting {msg.symbol=}")
+    data = {
+        'symbol': msg.symbol,
+        'type': 'market',
+        'clientOid': str(uuid.uuid4()).replace('-', '')
+    }
+    if msg.in_order:
+        data['funds'] = round(msg.amount, msg.decimal_places)
+        data['side'] = 'sell'
+    else:
+        data['size'] = round(msg.amount, msg.decimal_places)
+        data['side'] = 'buy'
+    r = await api_endpoints.post_order(data)
+    queue.task_done()
+
+
+def display_expected(cycle, ins, outs):
+    print()
+    print('----------------Expected-----------------')
+    print()
+    print("{:<18} {:<23} {:<23} {:<10}".format('Currency', 'in', 'out', 'difference'))
+    for curr in cycle:
+        print("{:<18} {:<23} {:<23} {:<10}".format(
+            curr,
+            ins[curr],
+            outs[curr],
+            ins[curr]-outs[curr]))
+
+
+def display_order_books(products, order_book, did=None):
+    print()
+    print('Order Book:')
+    print()
+    print(did)
+    if did:
+        print("{:<18} {:<10} {:<15} {:<10} {:<15} {:<10} {:<15}".format('Product', 'Best Bid', 'size', 'Best Ask', 'size', 'did', 'size'))
+        for prod in products:
+            print("{:<18} {:<10} {:<15} {:<10} {:<15} {:<10} {:<15}".format(
+                prod[0],
+                float(order_book[prod[0]]['bids'][0][0]),
+                float(order_book[prod[0]]['bids'][0][1]),
+                float(order_book[prod[0]]['asks'][0][0]),
+                float(order_book[prod[0]]['asks'][0][1]),
+                did[prod[0]][0],
+                did[prod[0]][1]))
+    else:
+        print("{:<18} {:<10} {:<15} {:<10} {:<15}".format('Product', 'Best Bid', 'size', 'Best Ask', 'size'))
+        for prod in products:
+            print("{:<18} {:<10} {:<15} {:<10} {:<15}".format(
+                prod[0],
+                order_book[prod[0]]['bids'][0][0],
+                order_book[prod[0]]['bids'][0][1],
+                order_book[prod[0]]['asks'][0][0],
+                order_book[prod[0]]['asks'][0][1]))
 
 
 def stats(gains_list):
@@ -112,30 +180,27 @@ def convert_to_cycle_products(cycle, prod_df):
         p = '-'.join(cycle[n:n + 2])
         if p in prod_df.index:
             if cycle[n] in c.LIST_OF_CLASS_B:
-                cycle_products.append([prod_df.loc[p]['symbol'], True, 2 * c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc[p]['symbol'], True, 2 * c.TRANSACTION_COST, round(-math.log(float(prod_df.loc[p]['quoteIncrement']), 10))])
             elif cycle[n] in c.LIST_OF_CLASS_C:
-                cycle_products.append([prod_df.loc[p]['symbol'], True, 3 * c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc[p]['symbol'], True, 3 * c.TRANSACTION_COST, round(-math.log(float(prod_df.loc[p]['quoteIncrement']), 10))])
             else:
-                cycle_products.append([prod_df.loc[p]['symbol'], True, c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc[p]['symbol'], True, c.TRANSACTION_COST, round(-math.log(float(prod_df.loc[p]['quoteIncrement']), 10))])
         elif '-'.join(reversed(cycle[n:n + 2])) in prod_df.index:
             if cycle[n+1] in c.LIST_OF_CLASS_B:
-                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 2 * c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 2 * c.TRANSACTION_COST, round(-math.log(float(prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['baseIncrement']), 10))])
             elif cycle[n+1] in c.LIST_OF_CLASS_C:
-                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 3 * c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, 3 * c.TRANSACTION_COST, round(-math.log(float(prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['baseIncrement']), 10))])
             else:
-                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, c.TRANSACTION_COST])
+                cycle_products.append([prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['symbol'], False, c.TRANSACTION_COST, round(-math.log(float(prod_df.loc['-'.join(reversed(cycle[n:n + 2]))]['baseIncrement']), 10))])
         else:
             print('something wrong with:   ', cycle)
     return cycle_products
 
 
-def header_setup(endpoint, req_type, data=''):
+def header_setup(endpoint, req_type='', data=''):
     now = int(time.time() * 1000)
-    if req_type == 'GET':
-        str_to_sign = str(now) + req_type + endpoint
-    else:
-        #data = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
-        str_to_sign = str(now) + req_type + endpoint + data
+
+    str_to_sign = str(now) + req_type + endpoint + data
 
     signature = base64.b64encode(
         hmac.new(c.SECRET.encode('utf-8'), str_to_sign.encode('utf-8'), hashlib.sha256).digest())
